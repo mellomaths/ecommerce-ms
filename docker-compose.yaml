@@ -1,0 +1,10 @@
+services:
+  acount-ms:
+  category-ms:
+  order-ms:
+  graphql-gw:
+  account-db:
+  category-db:
+  order-db:
+
+

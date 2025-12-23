@@ -1,3 +1,18 @@
 
-gqlgen:
-    cd ./graphql && go run github.com/99designs/gqlgen generate
+run:
+    go run cmd/*.go
+
+build:
+    go build
+
+sqlc:
+    sqlc generate
+
+pg-migration-up:
+    cd internal/adapters/postgresql/migrations && goose postgres postgres://postgres:postgres@192.168.1.100:5432/ecomm up
+
+pg-migration-down:
+    cd internal/adapters/postgresql/migrations && goose postgres postgres://postgres:postgres@192.168.1.100:5432/ecomm down
+
+create-migration NAME:
+    goose -s create {{NAME}} sql

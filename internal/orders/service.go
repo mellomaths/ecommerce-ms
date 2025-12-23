@@ -1,0 +1,82 @@
+package orders
+
+import (
+	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
+	repo "github.com/mellomaths/ecommerce-ms/internal/adapters/postgresql/sqlc"
+)
+
+var (
+	ErrProductNotFound = errors.New("product not found")
+	ErrProductNoStock  = errors.New("product has not enough stock")
+	ErrInvalidOrder    = errors.New("invalid order")
+)
+
+type CreateOrderParams struct {
+	CustomerId int64              `json:"customer_id"`
+	Items      []OrderItemsParams `json:"items"`
+}
+
+type OrderItemsParams struct {
+	ProductId int64 `json:"product_id"`
+	Quantity  int32 `json:"quantity"`
+}
+
+type Service interface {
+	PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order, error)
+}
+
+type svc struct {
+	repo *repo.Queries
+	db   *pgx.Conn
+}
+
+func NewService(repo *repo.Queries, db *pgx.Conn) Service {
+	return &svc{repo: repo, db: db}
+}
+
+func (s *svc) PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order, error) {
+	if op.CustomerId == 0 {
+		return repo.Order{}, ErrInvalidOrder
+	}
+	if len(op.Items) == 0 {
+		return repo.Order{}, ErrInvalidOrder
+	}
+	// transactional
+	// 1. create order
+	// 2. look for the product if exists
+	// 3. create order items
+	tx, err := s.db.Begin(ctx) // begin transaction
+	if err != nil {
+		return repo.Order{}, err
+	}
+	defer tx.Rollback(ctx) // if anything goes wrong, rollback
+	qtx := s.repo.WithTx(tx)
+	order, err := qtx.CreateOrder(ctx, op.CustomerId)
+	if err != nil {
+		return repo.Order{}, err
+	}
+	for _, item := range op.Items {
+		product, err := s.repo.FindProductById(ctx, item.ProductId)
+		if err != nil {
+			return repo.Order{}, ErrProductNotFound
+		}
+		if product.Quantity < item.Quantity {
+			return repo.Order{}, ErrProductNoStock
+		}
+		_, err = qtx.CreateOrderItem(ctx, repo.CreateOrderItemParams{
+			OrderID:    order.ID,
+			ProductID:  product.ID,
+			Quantity:   item.Quantity,
+			PriceCents: product.PriceInCents,
+		})
+		if product.Quantity < item.Quantity {
+			return repo.Order{}, err
+		}
+		// TODO: Update the product stock quantity
+	}
+	tx.Commit(ctx)
+	return order, nil
+}

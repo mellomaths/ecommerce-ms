@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mellomaths/ecommerce-ms/internal/products"
 	"github.com/mellomaths/ecommerce-ms/internal/requests"
 	"github.com/mellomaths/ecommerce-ms/internal/responses"
 )
@@ -30,7 +31,7 @@ func (h *handler) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	o, err := h.service.PlaceOrder(r.Context(), orderParams)
 	if err != nil {
 		log.Println(err)
-		if err == ErrProductNotFound {
+		if err == products.ErrProductNotFound {
 			responses.NewJsonErrorResponse(w, http.StatusNotFound, "validation_error", err.Error())
 			return
 		}

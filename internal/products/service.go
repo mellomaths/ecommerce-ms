@@ -2,8 +2,13 @@ package products
 
 import (
 	"context"
+	"errors"
 
 	repo "github.com/mellomaths/ecommerce-ms/internal/adapters/postgresql/sqlc"
+)
+
+var (
+	ErrProductNotFound = errors.New("product not found")
 )
 
 type CreateProductParams struct {
@@ -16,6 +21,8 @@ type Service interface {
 	ListProducts(ctx context.Context) ([]repo.Product, error)
 	FindProductById(ctx context.Context, id int64) (repo.Product, error)
 	CreateProduct(ctx context.Context, pp CreateProductParams) (repo.Product, error)
+	AddProductStock(ctx context.Context, id int64, quantity int32) (repo.Product, error)
+	RemoveProductStock(ctx context.Context, id int64, quantity int32) (repo.Product, error)
 }
 
 type svc struct {
@@ -48,4 +55,34 @@ func (s *svc) CreateProduct(ctx context.Context, pp CreateProductParams) (repo.P
 		return repo.Product{}, err
 	}
 	return product, nil
+}
+
+func (s *svc) AddProductStock(ctx context.Context, id int64, quantity int32) (repo.Product, error) {
+	p, err := s.repo.FindProductById(ctx, id)
+	if err != nil {
+		return repo.Product{}, ErrProductNotFound
+	}
+	p.Quantity += int32(quantity)
+	s.repo.UpdateProduct(ctx, repo.UpdateProductParams{
+		ID:           p.ID,
+		Name:         p.Name,
+		PriceInCents: p.PriceInCents,
+		Quantity:     p.Quantity,
+	})
+	return p, nil
+}
+
+func (s *svc) RemoveProductStock(ctx context.Context, id int64, quantity int32) (repo.Product, error) {
+	p, err := s.repo.FindProductById(ctx, id)
+	if err != nil {
+		return repo.Product{}, ErrProductNotFound
+	}
+	p.Quantity -= int32(quantity)
+	s.repo.UpdateProduct(ctx, repo.UpdateProductParams{
+		ID:           p.ID,
+		Name:         p.Name,
+		PriceInCents: p.PriceInCents,
+		Quantity:     p.Quantity,
+	})
+	return p, nil
 }

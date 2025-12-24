@@ -6,12 +6,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	repo "github.com/mellomaths/ecommerce-ms/internal/adapters/postgresql/sqlc"
+	"github.com/mellomaths/ecommerce-ms/internal/products"
 )
 
 var (
-	ErrProductNotFound = errors.New("product not found")
-	ErrProductNoStock  = errors.New("product has not enough stock")
-	ErrInvalidOrder    = errors.New("invalid order")
+	ErrProductNoStock = errors.New("product has not enough stock")
+	ErrInvalidOrder   = errors.New("invalid order")
 )
 
 type CreateOrderParams struct {
@@ -36,12 +36,13 @@ type Service interface {
 }
 
 type svc struct {
-	repo *repo.Queries
-	db   *pgx.Conn
+	repo            *repo.Queries
+	db              *pgx.Conn
+	productsService products.Service
 }
 
-func NewService(repo *repo.Queries, db *pgx.Conn) Service {
-	return &svc{repo: repo, db: db}
+func NewService(repo *repo.Queries, db *pgx.Conn, ps products.Service) Service {
+	return &svc{repo: repo, db: db, productsService: ps}
 }
 
 func (s *svc) PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order, error) {
@@ -68,7 +69,7 @@ func (s *svc) PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order,
 	for _, item := range op.Items {
 		product, err := s.repo.FindProductById(ctx, item.ProductId)
 		if err != nil {
-			return repo.Order{}, ErrProductNotFound
+			return repo.Order{}, products.ErrProductNotFound
 		}
 		if product.Quantity < item.Quantity {
 			return repo.Order{}, ErrProductNoStock
@@ -79,10 +80,10 @@ func (s *svc) PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order,
 			Quantity:   item.Quantity,
 			PriceCents: product.PriceInCents,
 		})
-		if product.Quantity < item.Quantity {
+		_, err = s.productsService.RemoveProductStock(ctx, product.ID, item.Quantity)
+		if err != nil {
 			return repo.Order{}, err
 		}
-		// TODO: Update the product stock quantity
 	}
 	tx.Commit(ctx)
 	return order, nil

@@ -19,6 +19,14 @@ INSERT INTO products (
 	quantity
 ) VALUES ($1, $2, $3) RETURNING *;
 
+-- name: UpdateProduct :one
+UPDATE products
+SET
+	name = $2,
+	price_in_cents = $3,
+	quantity = $4
+WHERE id = $1 RETURNING *;
+
 -- name: CreateOrder :one
 INSERT INTO orders (
   customer_id

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mellomaths/ecommerce-ms/internal/requests"
 	"github.com/mellomaths/ecommerce-ms/internal/responses"
 )
 
@@ -43,4 +44,20 @@ func (h *handler) FindProductById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	responses.NewJsonResponse(w, http.StatusOK, product)
+}
+
+func (h *handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	var productParams CreateProductParams
+	if err := requests.DecodeJsonBody(r, &productParams); err != nil {
+		log.Println(err)
+		responses.NewJsonErrorResponse(w, http.StatusBadRequest, "validation_error", "invalid product")
+		return
+	}
+	p, err := h.service.CreateProduct(r.Context(), productParams)
+	if err != nil {
+		log.Println(err)
+		responses.NewJsonErrorResponse(w, http.StatusInternalServerError, "server_error", "unexpected error when creating a new product")
+		return
+	}
+	responses.NewJsonResponse(w, http.StatusOK, p)
 }

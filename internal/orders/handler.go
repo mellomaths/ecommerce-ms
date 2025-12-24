@@ -3,7 +3,9 @@ package orders
 import (
 	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/mellomaths/ecommerce-ms/internal/requests"
 	"github.com/mellomaths/ecommerce-ms/internal/responses"
 )
@@ -44,4 +46,15 @@ func (h *handler) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	responses.NewJsonResponse(w, http.StatusCreated, o)
+}
+
+func (h *handler) FindOrderById(w http.ResponseWriter, r *http.Request) {
+	orderId, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		log.Println(err)
+		responses.NewJsonErrorResponse(w, http.StatusBadRequest, "validation_error", "invalid order id")
+		return
+	}
+	order, err := h.service.FindOrderById(r.Context(), orderId)
+	responses.NewJsonResponse(w, http.StatusOK, order)
 }

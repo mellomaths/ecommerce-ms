@@ -24,8 +24,15 @@ type OrderItemsParams struct {
 	Quantity  int32 `json:"quantity"`
 }
 
+type OrderCompleted struct {
+	Order             repo.Order       `json:"order"`
+	Items             []repo.OrderItem `json:"items"`
+	TotalPriceInCents int64            `json:"total_price_in_cents"`
+}
+
 type Service interface {
 	PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order, error)
+	FindOrderById(ctx context.Context, id int64) (OrderCompleted, error)
 }
 
 type svc struct {
@@ -79,4 +86,33 @@ func (s *svc) PlaceOrder(ctx context.Context, op CreateOrderParams) (repo.Order,
 	}
 	tx.Commit(ctx)
 	return order, nil
+}
+
+func (s *svc) FindOrderById(ctx context.Context, id int64) (OrderCompleted, error) {
+	rows, err := s.repo.FindOrderById(ctx, id)
+	if err != nil {
+		return OrderCompleted{}, err
+	}
+	o := OrderCompleted{
+		Order:             repo.Order{},
+		Items:             []repo.OrderItem{},
+		TotalPriceInCents: 0,
+	}
+	for _, r := range rows {
+		o.Order = repo.Order{
+			ID:         r.OrderID,
+			CustomerID: r.CustomerID,
+			CreatedAt:  r.CreatedAt,
+		}
+		i := repo.OrderItem{
+			ID:         r.OrderItemID.Int64,
+			OrderID:    r.OrderID,
+			ProductID:  r.ProductID.Int64,
+			Quantity:   r.Quantity.Int32,
+			PriceCents: r.PriceCents.Int32,
+		}
+		o.Items = append(o.Items, i)
+		o.TotalPriceInCents += int64(r.Quantity.Int32) * int64(r.PriceCents.Int32)
+	}
+	return o, nil
 }

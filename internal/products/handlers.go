@@ -37,5 +37,10 @@ func (h *handler) FindProductById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	product, err := h.service.FindProductById(r.Context(), productId)
+	if product.ID == 0 {
+		log.Println("product not found")
+		responses.NewJsonErrorResponse(w, http.StatusNotFound, "not found", "product not found")
+		return
+	}
 	responses.NewJsonResponse(w, http.StatusOK, product)
 }

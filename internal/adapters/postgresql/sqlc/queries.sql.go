@@ -7,6 +7,8 @@ package repo
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createOrder = `-- name: CreateOrder :one
@@ -50,6 +52,60 @@ func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams
 		&i.PriceCents,
 	)
 	return i, err
+}
+
+const findOrderById = `-- name: FindOrderById :many
+SELECT 
+	o.id as order_id,
+	o.customer_id as customer_id,
+	o.created_at as created_at,
+	oi.id as order_item_id,
+	oi.product_id as product_id,
+	oi.quantity as quantity,
+	oi.price_cents as price_cents
+FROM 
+	orders as o
+LEFT JOIN order_items as oi
+	ON o.id = oi.order_id
+WHERE o.id = $1
+`
+
+type FindOrderByIdRow struct {
+	OrderID     int64              `json:"order_id"`
+	CustomerID  int64              `json:"customer_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	OrderItemID pgtype.Int8        `json:"order_item_id"`
+	ProductID   pgtype.Int8        `json:"product_id"`
+	Quantity    pgtype.Int4        `json:"quantity"`
+	PriceCents  pgtype.Int4        `json:"price_cents"`
+}
+
+func (q *Queries) FindOrderById(ctx context.Context, id int64) ([]FindOrderByIdRow, error) {
+	rows, err := q.db.Query(ctx, findOrderById, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindOrderByIdRow
+	for rows.Next() {
+		var i FindOrderByIdRow
+		if err := rows.Scan(
+			&i.OrderID,
+			&i.CustomerID,
+			&i.CreatedAt,
+			&i.OrderItemID,
+			&i.ProductID,
+			&i.Quantity,
+			&i.PriceCents,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const findProductById = `-- name: FindProductById :one

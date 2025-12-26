@@ -59,5 +59,5 @@ func (h *handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		responses.NewJsonErrorResponse(w, http.StatusInternalServerError, "server_error", "unexpected error when creating a new product")
 		return
 	}
-	responses.NewJsonResponse(w, http.StatusOK, p)
+	responses.NewJsonResponse(w, http.StatusCreated, p)
 }

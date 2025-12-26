@@ -3,7 +3,10 @@ run:
     go run cmd/*.go
 
 build:
-    go build
+    go build -o ecomm ./cmd
+
+exec:
+    ./ecomm
 
 sqlc:
     sqlc generate

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	repo "github.com/mellomaths/ecommerce-ms/internal/adapters/postgresql/sqlc"
 	"github.com/mellomaths/ecommerce-ms/internal/products"
+	"github.com/mellomaths/ecommerce-ms/internal/utils"
 )
 
 var (
@@ -37,11 +38,16 @@ type Service interface {
 
 type svc struct {
 	repo            *repo.Queries
-	db              *pgx.Conn
+	db              utils.DBConn
 	productsService products.Service
 }
 
 func NewService(repo *repo.Queries, db *pgx.Conn, ps products.Service) Service {
+	return &svc{repo: repo, db: db, productsService: ps}
+}
+
+// NewServiceWithDB allows injecting a dbConn interface for testing
+func NewServiceWithDB(repo *repo.Queries, db utils.DBConn, ps products.Service) Service {
 	return &svc{repo: repo, db: db, productsService: ps}
 }
 

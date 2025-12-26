@@ -8,6 +8,9 @@ build:
 exec:
     ./ecomm
 
+tests:
+    go test ./cmd/... ./internal/...
+
 sqlc:
     sqlc generate
 
